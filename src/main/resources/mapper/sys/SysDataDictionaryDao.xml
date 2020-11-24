@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lsd.fun.modules.sys.dao.SysDataDictionaryDao">
+
+    <!-- 可根据自己的需求，是否要使用 -->
+    <resultMap type="com.lsd.fun.modules.sys.entity.SysDataDictionaryEntity" id="tDataDictionaryMap">
+        <result property="id" column="id"/>
+        <result property="pid" column="pid"/>
+        <result property="name" column="name"/>
+        <result property="createdAt" column="create_at"/>
+        <result property="updatedAt" column="update_at"/>
+    </resultMap>
+
+    <resultMap type="com.lsd.fun.modules.sys.vo.TDataDictionaryVo" id="tDataDictionaryVoMap">
+        <result property="dataDictionaryId" column="data_dictionary_id"/>
+        <result property="dataDictionaryName" column="data_dictionary_name"/>
+        <collection property="dictionaryManageList" ofType="com.lsd.fun.modules.sys.entity.SysDictionaryManageEntity" javaType="java.util.List">
+            <result property="id" column="dictionary_manage_id"/>
+            <result property="did" column="did"/>
+            <result property="name" column="name"/>
+            <result property="value" column="value"/>
+            <result property="createdAt" column="created_at"/>
+            <result property="updatedAt" column="updated_at"/>
+        </collection>
+    </resultMap>
+
+    <select id="queryList" resultMap="tDataDictionaryVoMap">
+        select d.id AS data_dictionary_id,d.`name` AS data_dictionary_name,
+               dic.id AS dictionary_manage_id,
+               dic.did,
+               dic.name,
+               dic.value,
+               dic.created_at,
+               dic.updated_at
+        FROM t_data_dictionary d
+                 LEFT JOIN t_dictionary_manage dic ON dic.did = d.id
+    </select>
+
+
+</mapper>

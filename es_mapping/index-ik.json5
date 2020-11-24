@@ -1,0 +1,109 @@
+// PUT /shop
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "analysis": {
+      "filter": {
+        "my_synonyms_filter": {   //同义词过滤器
+          "type": "synonym",
+          "synonyms_path": "/usr/share/elasticsearch/plugins/elasticsearch-analysis-ik-7.5.2/config/synonyms.txt"  //同义词词库
+        },
+        "exclude_num_filter":{    //过滤数字(ik分词器分出来的数字类型是"ARABIC")
+          "type":"keep_types",
+          "types":["ARABIC"],
+          "mode":"exclude"
+        },
+        "min_2_len_filter":{      //词汇最小长度为2
+          "type":"length",
+          "min":2
+        }
+      },
+      "analyzer": {
+        "ik_syno": {        //智能同义词分词器
+          "type": "custom",
+          "tokenizer": "ik_smart",
+          "filter": [
+            "my_synonyms_filter"
+          ]
+        },
+        "ik_syno_max": {    //max同义词分词器
+          "type": "custom",
+          "tokenizer": "ik_max_word",
+          "filter": [
+            "my_synonyms_filter"
+          ]
+        },
+        "ik_syno_max4suggest": {   //为补全提示定制的分词器,供analyze api使用
+          "type": "custom",
+          "tokenizer": "ik_max_word",
+          "filter": [
+            "my_synonyms_filter",
+            "exclude_num_filter",
+            "min_2_len_filter"
+          ]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "dynamic": false,  //设置索引不允许加入新字段
+    "properties": {
+      "id": {
+        "type": "integer"
+      },
+      "title": {
+        "type": "text",
+        "analyzer": "ik_syno_max",      //使用max同义词分词器
+        "search_analyzer": "ik_syno"    //使用智能同义词分词器
+      },
+      "tags": {
+        "type": "text",
+        "analyzer": "whitespace",
+        "fielddata": true
+      },
+      "province": {          //用于地图找房
+        "type": "keyword"
+      },
+      "city": {              //用于地图找房
+        "type": "keyword"
+      },
+      "region": {            //用于地图找房
+        "type": "keyword"
+      },
+      "address": {
+        "type": "text",
+        "analyzer": "ik_smart"
+      },
+      "location": {
+        "type": "geo_point"
+      },
+      "remark_score": {
+        "type": "double"
+      },
+      "price_per_man": {
+        "type": "integer"
+      },
+      "category_id": {
+        "type": "integer"
+      },
+      "category_name": {
+        "type": "keyword"
+      },
+      "seller_id": {
+        "type": "integer"
+      },
+      "seller_name": {
+        "type": "text",
+        "analyzer": "ik_syno_max",      //使用max同义词分词器
+        "search_analyzer": "ik_syno"    //使用智能同义词分词器
+      },
+      "seller_remark_score": {
+        "type": "double"
+      },
+      "suggest": {                      //自动补全提示依赖的字段
+        "type": "completion"
+      }
+    }
+  }
+}

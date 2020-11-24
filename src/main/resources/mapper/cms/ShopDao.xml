@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lsd.fun.modules.cms.dao.ShopDao">
+
+    <!-- 可根据自己的需求，是否要使用 -->
+    <resultMap type="com.lsd.fun.modules.cms.entity.ShopEntity" id="shopMap">
+        <result property="id" column="id"/>
+        <result property="title" column="title"/>
+        <result property="description" column="description"/>
+        <result property="remarkScore" column="remark_score"/>
+        <result property="pricePerMan" column="price_per_man"/>
+        <result property="province" column="province"/>
+        <result property="city" column="city"/>
+        <result property="region" column="region"/>
+        <result property="address" column="address"/>
+        <result property="categoryId" column="category_id"/>
+        <result property="tags" column="tags"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <result property="sellerId" column="seller_id"/>
+        <result property="coverFileId" column="cover_file_id"/>
+        <result property="disabledFlag" column="disabled_flag"/>
+    </resultMap>
+
+    <select id="queryPage" resultType="com.lsd.fun.modules.cms.vo.ShopVO">
+        select shop.id,
+               shop.title,
+               shop.description,
+               shop.remark_score,
+               shop.price_per_man,
+               shop.province,
+               shop.city,
+               shop.region,
+               shop.address,
+               shop.category_id,
+               shop.tags,
+               shop.created_at,
+               shop.updated_at,
+               shop.seller_id,
+               shop.disabled_flag,
+               category.name as category,
+               seller.name   as seller,
+               cover.id      as cover_file_id,
+               cover.path    as cover_url,
+               cover.is_crawl
+        from shop
+                 left join category on category.id = shop.category_id
+                 left join seller on seller.id = shop.seller_id
+                 left join t_file cover on cover.id = shop.cover_file_id
+            ${ew.customSqlSegment}
+    </select>
+
+
+    <select id="queryNeedIndexRow" resultType="java.util.Map">
+        select shop.id,
+               shop.title,
+               shop.description,
+               shop.tags,
+               shop.province,
+               shop.city,
+               shop.region,
+               concat(shop.province, shop.city, shop.region, shop.address) as address,
+               shop.remark_score,
+               shop.price_per_man,
+               shop.category_id,
+               category.name                                               as category_name,
+               shop.seller_id,
+               seller.name                                                 as seller_name,
+               seller.remark_score                                         as seller_remark_score,
+               shop.disabled_flag
+        from shop
+                 inner join category on shop.category_id = category.id
+                 inner join seller on shop.seller_id = seller.id
+            ${ew.customSqlSegment}
+    </select>
+
+
+    <select id="listOrderByField" resultType="com.lsd.fun.modules.cms.vo.ShopVO">
+        select shop.id,
+        shop.title,
+        shop.description,
+        shop.remark_score,
+        shop.price_per_man,
+        shop.province,
+        shop.city,
+        shop.region,
+        shop.address,
+        shop.category_id,
+        shop.tags,
+        shop.created_at,
+        shop.updated_at,
+        shop.seller_id,
+        shop.disabled_flag,
+        category.name as category,
+        seller.name as seller,
+        cover.path as cover_url,
+        cover.is_crawl
+        from shop
+        left join category on category.id = shop.category_id
+        left join seller on seller.id = shop.seller_id
+        left join t_file cover on cover.id = shop.cover_file_id
+        where shop.id in
+        <foreach collection="ids" item="item" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+        and shop.disabled_flag = 0
+        order by field
+        <foreach collection="ids" item="item" open="(shop.id," separator="," close=")">
+            #{item}
+        </foreach>
+    </select>
+
+</mapper>

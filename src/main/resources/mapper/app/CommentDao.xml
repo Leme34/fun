@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lsd.fun.modules.app.dao.CommentDao">
+
+    <!-- 可根据自己的需求，是否要使用 -->
+    <resultMap type="com.lsd.fun.modules.app.vo.CommentVo" id="commentVoMap">
+        <result property="id" column="id"/>
+        <result property="pid" column="pid"/>
+        <result property="userId" column="user_id"/>
+        <result property="replyUserId" column="reply_user_id"/>
+        <result property="shopId" column="shop_id"/>
+        <result property="content" column="content"/>
+        <result property="createdAt" column="created_at"/>
+        <result column="user_name" property="userName"/>
+        <result column="reply_username" jdbcType="VARCHAR" property="replyUserName"/>
+        <result column="user_avatar" property="userAvatar"/>
+        <result column="is_voted" property="isVoted"/>
+        <result column="vote_num" property="voteNum"/>
+        <result column="is_mine" property="isMine"/>
+        <!--用于暂存传入子查询中的入参-->
+        <result column="current_user_id" jdbcType="BIGINT" property="currentUserId"/>
+        <result column="host_prefix" property="hostPrefix"/>
+        <!-- 自关联级联查询user信息、子评论 -->
+        <!-- 这里要注意的是column对应的是comment表中的外键，而且需是表字段名 -->
+        <collection property="commentList" ofType="com.lsd.fun.modules.app.vo.CommentVo"
+                    select="querySubCommentsByPid" column="userId=current_user_id,id=id,hostPrefix=host_prefix">
+        </collection>
+    </resultMap>
+
+    <!-- 级联查询此博客所有评论(父子评论是1对多关系)
+           传入多参数时不能使用parameterType
+        -->
+    <select id="queryPage" resultMap="commentVoMap">
+        SELECT c.id,
+               c.content,
+               c.created_at,
+               c.pid,
+               c.user_id,
+               c.reply_user_id,
+               u1.username                                                                     AS user_name,
+               concat(#{hostPrefix}, file.path)                                                AS user_avatar,
+               u2.username                                                                     AS reply_username,
+               IF(cv.user_id IS NOT NULL, TRUE, FALSE)                                         AS is_voted,        #若此用户没有给此评论点赞则is_voted=0否则=1
+               (SELECT COUNT(1) FROM comment_vote where comment_id = c.id GROUP BY comment_id) AS vote_num,
+               IF(c.user_id = #{userId}, TRUE, FALSE)                                          AS is_mine,
+               #{userId}                                                                       AS current_user_id, #用于暂存传入的userId传入子查询中
+               #{hostPrefix}                                                                   as host_prefix
+        FROM `comment` c
+                 LEFT JOIN `member` u1 ON c.user_id = u1.id
+                 LEFT JOIN `member` u2 ON c.reply_user_id = u2.id
+                 LEFT JOIN comment_vote cv ON c.id = cv.comment_id AND cv.user_id = #{userId} #若为null则此用户没有给此评论点赞
+                 LEFT JOIN t_file file on file.id = u1.avatar
+        WHERE c.shop_id = #{shopId} AND c.pid IS NULL
+        ORDER BY c.created_at DESC
+    </select>
+
+
+    <!-- collection中递归调用的 根据pid=id查询此以id作为pid的子评论
+            父查询中已经限定shopId此处无需再写
+         -->
+    <select id="querySubCommentsByPid" resultMap="commentVoMap">
+        SELECT c.id,
+               c.content,
+               c.created_at,
+               c.pid,
+               c.user_id,
+               c.reply_user_id,
+               u1.username                                                                     AS user_name,
+               concat(#{hostPrefix}, file.path)                                                AS user_avatar,
+               u2.username                                                                     AS reply_username,
+               IF(cv.user_id IS NOT NULL, TRUE, FALSE)                                         AS is_voted,        #若此用户没有给此评论点赞则is_voted=0否则=1
+               IF(c.user_id = #{userId}, TRUE, FALSE)                                          AS is_mine,
+               (SELECT COUNT(1) FROM comment_vote where comment_id = c.id GROUP BY comment_id) AS vote_num,
+               #{userId}                                                                       AS current_user_id, #用于暂存传入的userId传入子查询中
+               #{hostPrefix}                                                                   as host_prefix
+        FROM `comment` c
+                 LEFT JOIN `member` u1 ON c.user_id = u1.id
+                 LEFT JOIN `member` u2 ON c.reply_user_id = u2.id
+                 LEFT JOIN comment_vote cv ON c.id = cv.comment_id AND cv.user_id = #{userId} #若为null则此用户没有给此评论点赞
+                 LEFT JOIN t_file file on file.id = u1.avatar
+        WHERE c.pid = #{id}
+        ORDER BY c.created_at DESC
+    </select>
+
+</mapper>

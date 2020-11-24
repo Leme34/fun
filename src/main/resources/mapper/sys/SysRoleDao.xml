@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lsd.fun.modules.sys.dao.SysRoleDao">
+
+    <!-- 查询用户创建的角色ID列表 -->
+    <select id="queryRoleIdList" resultType="long">
+        select role_id
+        from sys_role
+        where create_user_id = #{createUserId}
+    </select>
+
+    <select id="queryRoleListByUserId" resultType="com.lsd.fun.modules.sys.entity.SysRoleEntity">
+        SELECT r.role_id,
+               r.role_name,
+               r.remark,
+               r.create_user_id,
+               r.create_time
+        FROM sys_user_role ur
+                 LEFT JOIN sys_role r ON r.role_id = ur.role_id
+        WHERE user_id = #{userId}
+    </select>
+</mapper>

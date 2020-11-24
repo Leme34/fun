@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lsd.fun.modules.cms.dao.MemberDao">
+
+    <!-- 可根据自己的需求，是否要使用 -->
+    <resultMap type="com.lsd.fun.modules.cms.entity.MemberEntity" id="memberMap">
+        <result property="id" column="id"/>
+        <result property="username" column="username"/>
+        <result property="password" column="password"/>
+        <result property="salt" column="salt"/>
+        <result property="sex" column="sex"/>
+        <result property="phone" column="phone"/>
+        <result property="email" column="email"/>
+        <result property="birth" column="birth"/>
+        <result property="avatar" column="avatar"/>
+        <result property="addressDefaultId" column="address_default_id"/>
+        <result property="memberChannel" column="member_channel"/>
+        <result property="mpOpenId" column="mp_open_id"/>
+        <result property="status" column="status"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="queryById" resultType="com.lsd.fun.modules.app.vo.MemberVo">
+        select member.username,
+               member.sex,
+               member.email,
+               member.phone,
+               member.birth,
+               member.avatar,
+               file.path as avatar_url,
+               member.address_default_id,
+               member.created_at
+        from member
+                 left join t_file file on file.id = member.avatar
+        where member.id = #{userId}
+    </select>
+
+
+</mapper>

@@ -1,0 +1,146 @@
+kind: pipeline
+name: publish  # Pipeline名称
+type: docker   # 此Pipeline使用 Docker Runner
+
+
+#clone:   #禁用默认的clone(Drone automatically clones your repository before executing your pipeline steps)
+#  disable: true
+
+# 构建步骤
+steps:
+
+  #  - name: restore-cache   # 恢复（找以前的）依赖缓存，供构建时使用
+  #    image: appleboy/drone-sftp-cache
+  #    settings:
+  #      server: 192.168.101.10
+  #      port: 2222
+  #      username: sftp
+  #      password: 123456
+  #      path: /cache        #sftp上存放缓存的目标路径
+  #      ignore_branch: true #分支名称不参与缓存文件名（哈希）的生成
+  #      restore: true
+  #      mount:              #需要缓存的文件夹
+  #        - repository      #下边执行Maven构建时MAVEN_OPTS指定的存放依赖缓存的目录
+
+  - name: restore-cache
+    image: drillster/drone-volume-cache
+    privileged: true
+    settings:
+      restore: true
+      mount:              #需要缓存的文件夹
+        - repository      #下边执行Maven构建时MAVEN_OPTS指定的存放依赖缓存的目录
+      ignore_branch: true #分支名称不参与缓存文件名（哈希）的生成
+    volumes:
+      - name: cache  # The Volume's name
+        path: /cache # The path in the container 把宿主机缓存目录挂载到容器的此路径
+
+
+  - name: build  # 步骤名称（该步骤构建jar包）
+    image: maven:3-jdk-8-slim  # 步骤所用的Docker镜像
+    environment:
+      MAVEN_OPTS: -Dmaven.repo.local=./repository #指定存放依赖缓存的目录
+    commands:  # 容器执行maven打包命令
+      - mvn package -DskipTests=false -Dmaven.test.skip=true #编译测试用例类，但不执行测试用例
+    depends_on:
+      - clone
+      - restore-cache
+
+
+  #  - name: rebuild-cache
+  #    image: appleboy/drone-sftp-cache
+  #    settings:
+  #      server: 192.168.101.10
+  #      port: 2222
+  #      username: sftp
+  #      password: 123456
+  #      path: /cache
+  #      ignore_branch: true
+  #      rebuild: true
+  #      mount:
+  #        - repository
+  #    depends_on:
+  #      - build
+
+
+  - name: code-analysis
+    image: aosapps/drone-sonar-plugin
+    failure: ignore  #代码质量分析成功与否，不影响其他管道执行
+    settings:
+      sonar_host: http://192.168.11.101:9000
+      sonar_token: 9bc80cee1e0c5c8e594ed471e865eaa4ffcbb131
+    when:
+      event: [push]
+    depends_on:
+      - build
+
+
+  - name: rebuild-cache
+    image: drillster/drone-volume-cache
+    privileged: true
+    settings:
+      rebuild: true
+      mount:              #需要缓存的文件夹
+        - repository      #下边执行Maven构建时MAVEN_OPTS指定的存放依赖缓存的目录
+      #        - ./node_modules
+      ignore_branch: true #分支名称不参与缓存文件名（哈希）的生成
+    volumes:
+      - name: cache  # The Volume's name
+        path: /cache # The path in the container 把宿主机缓存目录挂载到容器的此路径
+    depends_on:
+      - build
+
+  - name: publish  # 打包发布镜像到仓库
+    image: plugins/docker  # Drone的Docker插件，可用于构建映像并将其发布到镜像仓库
+    settings:
+      # add-host:
+      # - registry.lsd.info:192.168.11.101
+      mirror: https://fhjvj31b.mirror.aliyuncs.com  # 镜像仓库源（用于拉取镜像）
+      registry: hub.c.163.com  # 镜像仓库地址（用于推送镜像）
+      username: ***  # 镜像仓库的账号
+      password: ***  # 镜像仓库的密码
+      repo: hub.c.163.com/leme34/test/fun  # 镜像仓库中的具体项目
+      tags:  # 镜像标签
+        - ${DRONE_BRANCH//\//-}-latest  # 分支名-latest（该分支的最新版本）
+        - ${DRONE_BRANCH//\//-}-${DRONE_COMMIT_SHA:0:8}  # 分支名-提交哈希前八位（唯一标签）
+    depends_on:
+      - build
+
+trigger:  # 只在以下分支触发
+  branch:
+    - dev
+    - ci
+
+volumes:
+  - name: cache  # The name use in this pipeline
+    host:
+      path: /tmp/cache  # 缓存目录挂载到宿主机此路径
+
+---
+kind: pipeline
+name: update  # Pipeline名称
+type: exec    # 此Pipeline使用 Exec Runner
+
+clone:   #更新服务的管道，不需要clone
+  disable: true
+
+platform:
+  os: linux
+  arch: amd64
+
+# 命令执行步骤
+steps:
+  - name: update  # 步骤名称（该步骤在服务器上的命令行拉取仓库最新镜像并执行更新）
+    commands:     # 执行命令
+      - cd /data/hadoop-spark-hive
+      - docker login -u *** -p *** hub.c.163.com    # 登录镜像仓库
+      - docker-compose pull fun  # 拉取最新镜像
+      - docker-compose up -d fun # 更新服务
+
+depends_on:  # 该Pipeline依赖Publish Pipeline
+  - publish
+
+trigger:  # 只在master和dev分支触发
+  branch:
+    - ci
+    - dev
+  event: [push]

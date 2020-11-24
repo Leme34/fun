@@ -1,0 +1,310 @@
+version: '3.4' 
+services:
+  namenode:
+    image: bde2020/hadoop-namenode:1.1.0-hadoop2.8-java8
+    container_name: namenode
+    volumes:
+      - ./data/namenode:/hadoop/dfs/name
+    environment:
+      - CLUSTER_NAME=test
+    env_file:
+      - ./hadoop-hive.env
+    ports:
+      - 50070:50070
+      - 8020:8020
+      #- 5005:5005
+
+  resourcemanager:
+    image: bde2020/hadoop-resourcemanager:1.1.0-hadoop2.8-java8
+    container_name: resourcemanager
+    environment:
+      - CLUSTER_NAME=test
+    env_file:
+      - ./hadoop-hive.env
+    ports:
+      - 8088:8088
+    depends_on: 
+      - datanode
+
+  historyserver:
+    image: bde2020/hadoop-historyserver:1.1.0-hadoop2.8-java8
+    container_name: historyserver
+    environment:
+      - CLUSTER_NAME=test
+    env_file:
+      - ./hadoop-hive.env
+    ports:
+      - 8188:8188
+
+  datanode:
+    image: bde2020/hadoop-datanode:1.1.0-hadoop2.8-java8
+    container_name: datanode
+    depends_on: 
+      - namenode
+    volumes:
+      - ./data/datanode:/hadoop/dfs/data
+    env_file:
+      - ./hadoop-hive.env
+    ports:
+      - 50075:50075
+      - 50010:50010
+
+  nodemanager:
+    image: bde2020/hadoop-nodemanager:1.1.0-hadoop2.8-java8
+    container_name: nodemanager
+    hostname: nodemanager
+    environment:
+      - CLUSTER_NAME=test
+    env_file:
+      - ./hadoop-hive.env
+    ports:
+      - 8042:8042
+
+  hive-server:
+    image: bde2020/hive:2.1.0-postgresql-metastore
+    container_name: hive-server
+    env_file:
+      - ./hadoop-hive.env
+    environment:
+      - "HIVE_CORE_CONF_javax_jdo_option_ConnectionURL=jdbc:postgresql://hive-metastore/metastore"
+    ports:
+      - "10000:10000"
+
+  hive-metastore:
+    image: bde2020/hive:2.1.0-postgresql-metastore
+    container_name: hive-metastore
+    env_file:
+      - ./hadoop-hive.env
+    command: /opt/hive/bin/hive --service metastore
+    ports:
+      - 9083:9083
+
+  #存储hive的元数据的postgresql
+  hive-metastore-postgresql:
+    image: bde2020/hive-metastore-postgresql:2.1.0
+    container_name: hive-metastore-postgresql
+    ports:
+      - 5432:5432
+    #win10直接挂载存在权限问题，只能使用name volume
+    volumes:
+      - hive-metastore-postgresql:/var/lib/postgresql/data
+
+  spark-master:
+    #image: bde2020/spark-master:2.1.0-hadoop2.8-hive-java8
+    image: bde2020/spark-master:2.2.0-hadoop2.8-hive-java8
+    container_name: spark-master
+    hostname: spark-master
+    volumes:
+      - ./copy-jar.sh:/copy-jar.sh
+    ports:
+      - 8888:8080
+      - 7077:7077
+    env_file:
+      - ./hadoop-hive.env
+    volumes:
+      - ./hive-site.xml:/spark/conf/hive-site.xml   #spark连接hive的配置文件
+
+  spark-worker:
+    #image: bde2020/spark-worker:2.1.0-hadoop2.8-hive-java8
+    image: bde2020/spark-worker:2.2.0-hadoop2.8-hive-java8
+    container_name: spark-worker
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_MASTER=spark://spark-master:7077
+    ports:
+      - "8181:8081"
+    env_file:
+      - ./hadoop-hive.env
+      
+  mysql-server:
+    image: mysql:5.7
+    container_name: mysql-server
+    ports:
+      - "4406:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=123456
+      - TIMEZONE=Asia/Shanghai
+    volumes:
+      - ./data/mysql:/var/lib/mysql   #数据挂载到当前目录下的data/mysql文件夹
+      - ./conf/mysqld.cnf:/etc/mysql/mysql.conf.d/mysqld.cnf         #挂载外部配置文件
+
+  elasticsearch:
+    image: elasticsearch:7.5.2
+    container_name: elasticsearch
+    environment:
+#      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - es1:/usr/share/elasticsearch/data
+      - ./conf/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+      - ./elasticsearch-analysis-ik-7.5.2:/usr/share/elasticsearch/plugins/elasticsearch-analysis-ik-7.5.2
+
+
+  logstash:
+    image: logstash:7.5.2
+    container_name: logstash
+    ports:
+      - "50044:50044"
+#    volumes:
+#      - ./pipeline/:/usr/share/logstash/pipeline/
+      
+  kibana:
+    image: kibana:7.5.2
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+
+  canal-server:
+    image: canal/canal-server:v1.1.4
+    container_name: canal-server
+    ports:
+      - "11111:11111"
+      - "5666:5005"
+    volumes:
+      - ./conf/canal-server:/home/admin/canal-server/conf
+      - ./logs/canal.server:/home/admin/canal-server/logs
+    depends_on:
+      - kafka
+#      - canal-admin
+    
+  canal-adapter:
+    image: canal/canal-adapter:v1.1.4
+    container_name: canal-adapter
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./conf/canal.adapter:/home/canal/conf
+      - ./logs/canal.adapter:/home/canal/logs
+    depends_on:
+      - canal-server
+
+#  canal-admin:
+#    image: canal/canal-admin:v1.1.4  #默认密码：admin/123456
+#    container_name: canal-admin
+#    ports:
+#      - "8089:8089"
+#    environment:
+#      - server.port=8089
+#      - canal.adminUser=admin
+#      - canal.adminPasswd=admin
+#    volumes:
+#      - ./conf/canal-admin:/home/admin/canal-admin/conf
+#      - ./logs/canal.admin:/home/admin/canal-admin/logs
+
+  redis:
+    image: redis
+    container_name: redis
+    ports:
+      - "6379:6379"
+  
+  server:
+    image: openjdk:8-jre-buster
+    container_name: server
+    command: java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005 -Xmx512m -jar /app.jar
+    ports:
+      - "8000:8080"
+      - "5555:5005"
+    volumes:
+      - ./application.yml:/application.yml:ro
+      - ./application-dev.yml:/application-dev.yml:ro
+      - ./logback-spring.xml:/logback-spring.xml:ro
+      - ./logs/server:/logs
+      - ./fun-1.0-SNAPSHOT.jar:/app.jar:ro
+    environment:
+      - TZ=Asia/Shanghai     #配置容器时区，默认UTC
+      - spring.profiles.active=dev
+    restart: "no"
+    depends_on:
+      - redis
+      - kafka
+      - elasticsearch
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    ports:
+     - "80:80"
+    volumes:
+      - ./conf/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./conf/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./logs/nginx:/var/log/nginx
+      - ./app-dist:/app-dist:ro
+      - ./backend-dist:/backend-dist:ro
+
+#  itag:
+#    image: openjdk:8-jre-buster
+#    container_name: itag
+#    command: java -jar /app.jar
+#    ports:
+#      - "8098:8080"
+#    volumes:
+#      - ./application-itag.yml:/application.yml:ro
+#      - ./spark-itags-1.0-SNAPSHOT.jar:/app.jar:ro
+#    environment:
+#      - TZ=Asia/Shanghai     #配置容器时区，默认UTC
+#    restart: "no"
+#    depends_on:
+#      - redis
+
+
+
+  zk:
+    image: zookeeper
+    container_name: zk
+    ports:
+      - "3181:2181"
+    restart: "no"
+  
+
+  zkui:
+    image: maauso/zkui #用户名:admin 密码:manager
+    container_name: zkui
+    environment:
+      ZKLIST: zk:2181
+    ports:
+      - "9090:9090"
+    depends_on:
+      - zk
+  
+  kafka:
+    image: wurstmeister/kafka:2.11-1.1.1
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    restart: "no"
+    environment:    #以下配置项参考kafka的server.properties
+      KAFKA_ZOOKEEPER_CONNECT: zk:2181              #提供zookeeper服务的ip
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1     #若是单节点kafka必须设置为1,默认是3，除测试外为保证可用性建议>=3
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://192.168.101.10:9092  #broker 给 producer 和 consumer 连接使用的地址，如果没有设置，就使用 KAFKA_LISTENERS
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092     #0.0.0.0则绑定(监听)所有的网卡地址
+      KAFKA_DELETE_TOPIC_ENABLE: "true"             #自动（彻底）删除topic
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'       #不存在topic时自动创建
+    volumes:
+      - ./logs/kafka/:/kafka/
+    depends_on:
+      - zk
+
+  kafka-manager:
+    image: sheepkiller/kafka-manager
+    container_name: kafka-manager
+    ports:
+      - "9000:9000"
+    restart: "no"
+    environment:
+      ZK_HOSTS: zk:2181
+#    volumes:
+#      - ./conf/kafka-manager:/kafka-manager-1.3.1.8/conf
+    depends_on:
+      - kafka
+
+volumes:
+  hive-metastore-postgresql:
+    driver: local
+  es1:
+    driver: local

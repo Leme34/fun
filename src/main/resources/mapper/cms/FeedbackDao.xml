@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lsd.fun.modules.cms.dao.FeedbackDao">
+
+	<!-- 可根据自己的需求，是否要使用 -->
+    <resultMap type="com.lsd.fun.modules.cms.entity.FeedbackEntity" id="feedbackMap">
+        <result property="id" column="id"/>
+        <result property="memberId" column="member_id"/>
+        <result property="feedbackContent" column="feedback_content"/>
+        <result property="feedbackType" column="feedback_type"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+
+</mapper>

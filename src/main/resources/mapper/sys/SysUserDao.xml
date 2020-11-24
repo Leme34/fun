@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lsd.fun.modules.sys.dao.SysUserDao">
+    <!-- 查询用户的所有权限 -->
+    <select id="queryAllPerms" resultType="string">
+        select m.perms
+        from sys_user_role ur
+                 LEFT JOIN sys_role_menu rm on ur.role_id = rm.role_id
+                 LEFT JOIN sys_menu m on rm.menu_id = m.menu_id
+        where ur.user_id = #{userId}
+    </select>
+
+    <!-- 查询用户的所有菜单ID -->
+    <select id="queryAllMenuId" resultType="long">
+        select distinct rm.menu_id
+        from sys_user_role ur
+                 LEFT JOIN sys_role_menu rm on ur.role_id = rm.role_id
+        where ur.user_id = #{userId}
+    </select>
+
+    <select id="queryByUserName" resultType="com.lsd.fun.modules.sys.entity.SysUserEntity">
+        select *
+        from sys_user
+        where username = #{username}
+    </select>
+
+
+    <select id="listByRole" resultType="java.lang.String">
+        SELECT u.username
+        FROM sys_user u
+                 LEFT JOIN sys_user_role ur ON ur.user_id = u.user_id
+                 LEFT JOIN sys_role r ON r.role_id = ur.role_id
+        WHERE r.role_name = #{roleName}
+          AND u.status = 1
+    </select>
+
+    <select id="queryAllRoles" resultType="java.lang.String">
+        select r.role_name from sys_user u
+            left join sys_user_role su on su.user_id = u.user_id
+            left join sys_role r on  r.role_id = su.role_id
+        ${ew.customSqlSegment}
+    </select>
+
+</mapper>

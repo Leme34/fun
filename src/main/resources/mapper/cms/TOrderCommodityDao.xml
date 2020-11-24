@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lsd.fun.modules.cms.dao.TOrderCommodityDao">
+
+	<!-- 可根据自己的需求，是否要使用 -->
+    <resultMap type="com.lsd.fun.modules.cms.entity.TOrderCommodityEntity" id="tOrderCommodityMap">
+        <result property="id" column="id"/>
+        <result property="orderId" column="order_id"/>
+        <result property="shopId" column="shop_id"/>
+        <result property="shopName" column="shop_name"/>
+        <result property="num" column="num"/>
+        <result property="price" column="price"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+
+</mapper>

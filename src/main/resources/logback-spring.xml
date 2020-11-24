@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<configuration>
+    <conversionRule conversionWord="clr" converterClass="org.springframework.boot.logging.logback.ColorConverter"/>
+    <conversionRule conversionWord="wex"
+                    converterClass="org.springframework.boot.logging.logback.WhitespaceThrowableProxyConverter"/>
+    <conversionRule conversionWord="wEx"
+                    converterClass="org.springframework.boot.logging.logback.ExtendedWhitespaceThrowableProxyConverter"/>
+
+    <!--  TRACE < DEBUG < INFO < WARN < ERROR  -->
+    <property name="log.level" value="debug"/>
+    <property name="log.filePath" value="./logs/"/>
+    <property name="log.console_log_pattern"
+              value="%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"/>
+    <property name="log.file_log_pattern"
+              value="${FILE_LOG_PATTERN:-%d{${LOG_DATEFORMAT_PATTERN:-yyyy-MM-dd HH:mm:ss.SSS}} ${LOG_LEVEL_PATTERN:-%5p} ${PID:- } --- [%t] %-40.40logger{39} : %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}}"/>
+    <property name="log.maxHistory" value="30"/>
+
+
+    <!-- 控制台输出日志组件 -->
+    <appender name="consoleAppender" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${log.console_log_pattern}</pattern>
+            <charset class="java.nio.charset.Charset">UTF-8</charset>
+        </encoder>
+    </appender>
+    <!-- 控制台输出日志文件组件 -->
+    <appender name="consoleRollingFileAppender" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${log.filePath}/console.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${log.filePath}/console/console.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <MaxFileSize>10MB</MaxFileSize>
+            <MaxHistory>${log.maxHistory}</MaxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${log.console_log_pattern}</pattern>
+            <charset class="java.nio.charset.Charset">UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!--DEBUG级别的日志组件-->
+    <appender name="debugRollingFileAppender" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${log.filePath}/debug.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${log.filePath}/debug/debug.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <MaxFileSize>10MB</MaxFileSize>
+            <MaxHistory>${log.maxHistory}</MaxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${log.file_log_pattern}</pattern>
+            <charset class="java.nio.charset.Charset">UTF-8</charset>
+        </encoder>
+        <!--过滤日志级别-->
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>DEBUG</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+
+    <!--INFO级别的日志组件-->
+    <appender name="infoRollingFileAppender" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${log.filePath}/info.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${log.filePath}/info/info.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <MaxFileSize>10MB</MaxFileSize>
+            <MaxHistory>${log.maxHistory}</MaxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${log.file_log_pattern}</pattern>
+            <charset class="java.nio.charset.Charset">UTF-8</charset>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>INFO</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+
+    <!--ERROR级别的日志组件-->
+    <appender name="errorRollingFileAppender" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${log.filePath}/error.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${log.filePath}/error/error.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <MaxFileSize>10MB</MaxFileSize>
+            <MaxHistory>${log.maxHistory}</MaxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${log.file_log_pattern}</pattern>
+            <charset class="java.nio.charset.Charset">UTF-8</charset>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+
+    <!--                               DEBUG、INFO、ERROR异步日志                                       -->
+    <appender name="async-debugRollingFileAppender" class="ch.qos.logback.classic.AsyncAppender">
+        <!-- 不丢失日志.默认的,如果队列的80%已满,则会丢弃TRACT、DEBUG、INFO级别的日志 -->
+        <discardingThreshold>0</discardingThreshold>
+        <!-- 更改默认的队列的深度,该值会影响性能.默认值为256 -->
+        <queueSize>256</queueSize>
+        <appender-ref ref="debugRollingFileAppender"/>
+    </appender>
+    <appender name="async-infoRollingFileAppender" class="ch.qos.logback.classic.AsyncAppender">
+        <discardingThreshold>0</discardingThreshold>
+        <queueSize>256</queueSize>
+        <appender-ref ref="infoRollingFileAppender"/>
+    </appender>
+    <appender name="async-errorRollingFileAppender" class="ch.qos.logback.classic.AsyncAppender">
+        <discardingThreshold>0</discardingThreshold>
+        <queueSize>256</queueSize>
+        <appender-ref ref="errorRollingFileAppender"/>
+    </appender>
+
+    <springProfile name="prod">
+        <logger name="org.apache.ibatis" level="${log.level}" additivity="true"/>
+        <logger name="java.sql" level="${log.level}" additivity="true"/>
+        <logger name="com.lsd.fun.modules.*.dao" level="${log.level}" additivity="true"/>
+        <logger name="com.lsd.fun" level="${log.level}" additivity="true">
+            <appender-ref ref="debugRollingFileAppender"/>
+            <appender-ref ref="infoRollingFileAppender"/>
+            <appender-ref ref="errorRollingFileAppender"/>
+        </logger>
+        <root level="info">
+            <appender-ref ref="consoleAppender"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="dev">
+        <logger name="org.apache.ibatis" level="${log.level}" additivity="true"/>
+        <logger name="java.sql" level="${log.level}" additivity="true"/>
+        <logger name="com.lsd.fun.modules.*.dao" level="${log.level}" additivity="true"/>
+        <logger name="com.lsd.fun" level="${log.level}" additivity="true">
+            <appender-ref ref="consoleRollingFileAppender"/>
+        </logger>
+        <root level="info">
+            <appender-ref ref="consoleAppender"/>
+        </root>
+    </springProfile>
+
+</configuration>
